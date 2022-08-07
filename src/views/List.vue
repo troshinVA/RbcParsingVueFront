@@ -1,34 +1,40 @@
 <template>
     <div class="list-wrapper">
-        <h1>Rbc News</h1>
-        <span class="list-selector">News on page:
-            <select class="form-select" @change="handleSelect($event)">
-                <option v-for="n in 10" :key="n" :selected="n === articlesOnPage">{{ n }}</option>
-            </select>
-        </span>
-        <ul v-if="articles.length" class="list-group">
-            <article-card v-for="article in articles"
-                          :key="article.id"
-                          :article="article"></article-card>
-        </ul>
-
-        <div v-if="articles.length" v-observe-visibility="handleScrollToBottom">
+        <div class="header">
+            <h1>Rbc News</h1>
+            <span class="list-selector">News on page:
+                <select class="form-select" @change="handleSelect($event)">
+                    <option v-for="n in 10" :key="n" :selected="n === articlesOnPage">{{ n }}</option>
+                </select>
+            </span>
+            <span class="list-selector">Interval update in seconds:
+                <b-input class="form-input" @focusout="updateInterval($event)" :value=intervalUpdate />
+            </span>
         </div>
+
+        <InfiniteScroll :items="articles" @refetch="fetchLatest">
+            <template v-slot:item="{ item }" >
+                <article-card :article="item"></article-card>
+            </template>
+        </InfiniteScroll>
     </div>
 </template>
 
 <script>
 import ArticleCard from "@/components/ArcticleCard";
+import InfiniteScroll from "@/components/InfiniteScroll";
 
 export default {
     name: 'List',
     components: {
+        InfiniteScroll,
         ArticleCard,
     },
     data() {
         return {
             articlesOnPage: 5,
-            intervalUpdate: 100
+            intervalUpdate: 30,
+            setInterval: null
         }
     },
     computed: {
@@ -37,26 +43,38 @@ export default {
         },
     },
     methods: {
-        handleScrollToBottom(isVisible) {
-            if (!isVisible) {
-                return
+        fetchLatest() {
+            if (this.$store.state.isLastPage) {
+                return;
             }
 
-            this.currentPage++;
             this.$store.dispatch('fetchLaterArticles', {itemsOnPage: this.articlesOnPage});
         },
         handleSelect(event) {
             this.articlesOnPage = event.target.value;
+            if (this.articlesOnPage <= this.articles.length) {
+                this.$store.getters.getArticlesOnPage(this.articlesOnPage);
+            } else {
+                this.$store.dispatch('fetchLaterArticles', {itemsOnPage: this.articlesOnPage - this.articles.length});
+            }
+        },
+        updateInterval(event) {
+            this.intervalUpdate = event.target.value;
+            this.updateByInterval();
+        },
+        updateByInterval() {
+            clearInterval(this.setInterval)
+            this.setInterval = setInterval(() => {
+                this.$store.dispatch('fetchNewArticles')
+            }, this.intervalUpdate * 1000)
         },
     },
     created() {
-        this.$store.dispatch('fetchLaterArticles', {page: this.currentPage, itemsOnPage: this.articlesOnPage});
+        this.fetchLatest();
+        this.updateByInterval();
     },
-    mounted() {
-        setInterval(this.$store.dispatch('fetchNewArticles', {
-            page: this.currentPage,
-            itemsOnPage: this.articlesOnPage
-        }), this.intervalUpdate);
-    }
+    beforeDestroy () {
+        clearInterval(this.setInterval)
+    },
 }
 </script>

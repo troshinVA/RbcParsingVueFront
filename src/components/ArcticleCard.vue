@@ -3,6 +3,7 @@
         <b-card
             :title=article.title
             class="mb-2"
+            v-bind:class="{ 'rating-up': ratingUp, 'rating-down': ratingDown }"
         >
             <b-card-sub-title>{{ article.category }}, {{ article.time }}</b-card-sub-title>
             <b-card-text>
@@ -30,6 +31,12 @@ export default {
     props: {
         article: Object,
     },
+    data() {
+        return {
+            ratingUp: false,
+            ratingDown: false
+        }
+    },
     methods: {
         handleDeleteButton() {
             this.$store.dispatch('deleteArticleFromList', this.article.id);
@@ -39,10 +46,16 @@ export default {
         },
         handlePlusButton() {
             this.article.rating++;
+            this.ratingUp = true;
+            this.ratingDown = !this.ratingUp;
+
             this.$store.dispatch('updateArticleRating', {id: this.article.id, newRating: this.article.rating});
         },
         handleMinusButton() {
             this.article.rating--;
+            this.ratingDown = true;
+            this.ratingUp = !this.ratingDown;
+
             this.$store.dispatch('updateArticleRating', {id: this.article.id, newRating: this.article.rating});
         }
     },

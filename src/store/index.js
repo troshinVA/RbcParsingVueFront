@@ -9,7 +9,8 @@ export default new Vuex.Store({
     state: {
         articles: [],
         latestArticleId: 0,
-        newestArticleId: 0
+        newestArticleId: 0,
+        isLastPage: false
     },
     mutations: {
         setLatestArticles(state, articles) {
@@ -19,8 +20,8 @@ export default new Vuex.Store({
         },
         setNewestArticles(state, articles) {
             state.articles.unshift(...articles);
-            state.latestArticleId = state.articles[0].id;
-            state.newestArticleId = state.articles.at(-1).id;
+            state.latestArticleId = state.articles.at(-1).id;
+            state.newestArticleId = state.articles[0].id;
         },
         deleteArticleById(state, id) {
             const index = state.articles.findIndex(function (el) {
@@ -38,33 +39,30 @@ export default new Vuex.Store({
             })
                 .then(({data}) => {
                     let articles = data.articles;
+                    this.state.isLastPage = data.meta.isLastPage;
+
                     commit('setLatestArticles', articles);
                 })
                 .catch(err => console.log(err))
         },
-        deleteArticleFromList({commit}, id) {
-            commit('deleteArticleById', id);
-        },
-        fetchNewArticles({state, commit}, {itemsOnPage}) {
+        fetchNewArticles({state, commit}) {
             return axiosInstance.post(ARTICLES_LIST(), {
-                itemsOnPage: itemsOnPage,
                 firstId: state.newestArticleId
             })
                 .then(({data}) => {
                     let articles = data.articles;
                     commit('setNewestArticles', articles);
                 })
-                .catch(err => console.log(err))
+                .catch(err => console.log(err));
         },
         updateArticleRating(context, {id, newRating}) {
             return axiosInstance.patch(ARTICLE_UPDATE_RATING(), {
                 id: id,
                 rating: newRating
-            })
-                .then(({data}) => {
-                    console.log(data);
-                })
-                .catch(err => console.log(err))
+            });
+        },
+        deleteArticleFromList({commit}, id) {
+            commit('deleteArticleById', id);
         },
     },
     getters: {
@@ -77,6 +75,9 @@ export default new Vuex.Store({
             });
 
             return state.articles[index];
+        },
+        getArticlesOnPage: (state) => (articlesOnPage) => {
+            state.articles = state.articles.slice(0, articlesOnPage);
         }
     }
 })
